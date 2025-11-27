@@ -97,3 +97,37 @@ INNER JOIN tp_sql_avance.orders o ON oi.order_id = o.id_order
 WHERE o.order_status IN ('PAID', 'SHIPPED')
 GROUP BY p.product_name
 HAVING SUM(oi.order_item_quantity) > 0;
+
+
+-- 2. Lister les produits qui **n’ont jamais été vendus**.
+SELECT product_name
+FROM tp_sql_avance.products 
+WHERE id_product NOT IN 
+(SELECT product_id FROM tp_sql_avance.order_items);
+
+
+-- 3. Trouver le client qui a **dépensé le plus** 
+-- (TOP 1 en chiffre d’affaires cumulé).
+SELECT customer_firstname, customer_lastname, (order_item_quantity*order_item_price_unit)
+FROM tp_sql_avance.customers
+INNER JOIN tp_sql_avance.orders ON id_customer = customer_id
+INNER JOIN tp_sql_avance.order_items ON id_order = order_id
+WHERE orders.order_status IN ('PAID', 'SHIPPED')
+ORDER BY (order_item_quantity*order_item_price_unit) DESC
+LIMIT 1;
+
+-- 4. Afficher les **3 produits les plus vendus** en termes de quantité totale.
+SELECT product_name, SUM(order_item_quantity)
+FROM tp_sql_avance.products 
+INNER JOIN tp_sql_avance.order_items ON id_product = product_id
+GROUP BY product_name
+ORDER BY SUM(order_item_quantity) DESC LIMIT 3;
+
+
+-- 5. Lister les commandes dont le montant total est 
+-- **strictement supérieur à la moyenne** de toutes les commandes.
+SELECT (order_item_quantity*order_item_price_unit) as sup_order_average
+FROM tp_sql_avance.order_items
+WHERE (order_item_quantity*order_item_price_unit) > 
+	(SELECT AVG(order_item_quantity*order_item_price_unit)
+	 FROM tp_sql_avance.order_items);
