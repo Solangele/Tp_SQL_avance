@@ -131,3 +131,66 @@ FROM tp_sql_avance.order_items
 WHERE (order_item_quantity*order_item_price_unit) > 
 	(SELECT AVG(order_item_quantity*order_item_price_unit)
 	 FROM tp_sql_avance.order_items);
+
+-- Partie 7 – Statistiques & agrégats
+-- 1. Calculer le **chiffre d’affaires total** 
+-- (toutes commandes confondues, hors commandes annulées si souhaité).
+SELECT SUM(order_item_quantity*order_item_price_unit) as total_orders
+FROM tp_sql_avance.order_items
+INNER JOIN tp_sql_avance.orders ON order_id = id_order
+WHERE  orders.order_status IN ('PAID', 'SHIPPED', 'PENDING');
+
+
+-- 2. Calculer le **panier moyen** (montant moyen par commande).
+SELECT ROUND(AVG(order_item_quantity*order_item_price_unit)::numeric,2) AS average_orders
+FROM tp_sql_avance.order_items;
+
+
+-- 3. Calculer la **quantité totale vendue par catégorie**.
+SELECT category_name, ROUND(SUM(order_item_quantity*order_item_price_unit)::numeric,2) AS sum_order_by_category
+FROM tp_sql_avance.categories
+INNER JOIN tp_sql_avance.products ON id_category = category_id
+INNER JOIN tp_sql_avance.order_items ON id_product = product_id
+INNER JOIN tp_sql_avance.orders ON order_id = id_order
+WHERE  orders.order_status IN ('PAID', 'SHIPPED')
+GROUP BY category_name;
+
+
+-- 4. Calculer le **chiffre d’affaires par mois** 
+-- (au moins sur les données fournies).
+SELECT ROUND(SUM(order_item_quantity*order_item_price_unit)::numeric,2)
+FROM tp_sql_avance.order_items
+INNER JOIN tp_sql_avance.orders ON order_id = id_order
+WHERE orders.order_date BETWEEN '2024-03-01' AND '2024-03-31'
+AND orders.order_status IN ('PAID', 'SHIPPED');
+
+
+-- 8 – Logique conditionnelle (CASE)
+-- 1. Pour chaque commande, afficher :
+-- l’ID de la commande, le client, la date, le statut, une version “lisible” du statut en français via `CASE` :
+-- `PAID` → “Payée”, `SHIPPED` → “Expédiée”, `PENDING` → “En attente” ,`CANCELLED` → “Annulée”
+SELECT id_order, customer_lastname, customer_firstname, order_date, 
+	CASE 
+		WHEN order_status = 'PAID' THEN 'Payée'
+		WHEN order_status = 'SHIPPED' THEN 'Expédiée'
+		WHEN order_status = 'PENDING' THEN 'En attente'
+		WHEN order_status = 'CANCELLED' THEN 'Annulée'
+	END as order_status
+FROM tp_sql_avance.customers
+INNER JOIN tp_sql_avance.orders ON id_customer = customer_id;
+
+
+-- 2. Pour chaque client, calculer le **montant total dépensé** 
+-- et le classer en segments :
+-- `< 100 €`  → “Bronze”, `100–300 €` → “Argent”, `> 300 €`  → “Or”
+-- Afficher : prénom, nom, montant total, segment.
+SELECT customer_firstname, customer_lastname, ROUND(SUM(order_item_quantity*order_item_price_unit)::numeric,2),
+	CASE 
+		WHEN SUM(order_item_quantity*order_item_price_unit) < 100 THEN 'Bronze'
+		WHEN SUM(order_item_quantity*order_item_price_unit) BETWEEN 100 AND 300 THEN 'Silver'
+		WHEN SUM(order_item_quantity*order_item_price_unit) > 300 THEN 'Gold'
+	END
+FROM tp_sql_avance.customers
+INNER JOIN tp_sql_avance.orders ON id_customer = customer_id
+INNER JOIN tp_sql_avance.order_items ON id_order = order_id
+GROUP BY customer_firstname, customer_lastname;
