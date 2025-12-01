@@ -30,6 +30,24 @@ services:
     networks:
       - db_network_ecommerce
 
+  report:
+    build:
+      context: ./python
+      dockerfile: Dockerfile
+    container_name: supershop_report
+    depends_on:
+      - db
+    environment:
+      DB_NAME: supershop
+      DB_USER: admin
+      DB_PASSWORD: admin
+      DB_HOST: db
+      DB_PORT: 5432
+    volumes:
+      - ./rapport:/app/rapport
+    networks:
+      - db_network_ecommerce
+
 volumes:
   local_pgdata_ecommerce:
   local_pgadmin_ecommerce:
